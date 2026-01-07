@@ -15,10 +15,12 @@ def moment_of_inertia_rod_com(m, L):
     I = (m*L**2)/12
     return I
 
+
+###! UPDATE
 def s_vec(q, link_length):
         return sp.Matrix([[link_length*sp.cos(q)], [link_length*sp.sin(q)], [0]])
 
-def recursive_speed_and_acc(L, joint_traj, t):
+def recursive_speed_and_acc(L, joint_traj, offset ,t):
     """
     Generate a recursive trajectory based on the input trajectory and link lengths.
 
@@ -45,12 +47,12 @@ def recursive_speed_and_acc(L, joint_traj, t):
     com_velocity = []
     com_acceleration = []
     
-    z = sp.Matrix([0,0,1])
+    z = sp.Matrix([[0], [0], [1]])
 
     cumulative_angle = []
     for i in range(n):
         if i == 0:
-            cumulative_angle.append(joint_traj[0])
+            cumulative_angle.append(joint_traj[0] + offset)
         else:
             cumulative_angle.append(cumulative_angle[i-1] + joint_traj[i])
     
@@ -64,7 +66,7 @@ def recursive_speed_and_acc(L, joint_traj, t):
             body_frame_vecolity.append(sp.Matrix([[0], [0], [0]]))
             body_frame_acceleration.append(sp.Matrix([[0], [0], [0]]))
             continue
-
+            
         s_ci = s_vec(cumulative_angle[i], L[i]/2)
         s_li = s_vec(cumulative_angle[i-1], L[i-1])
 
