@@ -135,16 +135,20 @@ def _output(label, var_name, expr, use_lprint=True, is_sympy=True):
             print(f'{var_name} = {expr}')
 
 def _substitute_derivatives(expr):
-    """Substitute derivatives with readable velocity and acceleration symbols."""
+    """Substitute derivatives with readable velocity and acceleration symbols, and function calls with plain symbols."""
     if not hasattr(expr, 'atoms'):
         return expr
     
     # Find all derivatives in the expression
     derivatives = expr.atoms(sp.Derivative)
     
+    # Find all function applications (like theta(t), d1(t), etc.)
+    functions = expr.atoms(sp.core.function.AppliedUndef)
+    
     # Create substitution dictionary
     subs_dict = {}
     
+    # Substitute derivatives with v, omega, a, alpha
     for deriv in derivatives:
         # Get the function being differentiated
         func = deriv.expr
@@ -183,6 +187,14 @@ def _substitute_derivatives(expr):
             continue  # Skip higher order derivatives
         
         subs_dict[deriv] = sp.symbols(symbol_name)
+    
+    # Substitute function calls like theta(t) with plain symbols like theta
+    for func in functions:
+        if hasattr(func, 'func'):
+            func_name = str(func.func).replace('(t)', '')
+            # Remove any parentheses from the name
+            clean_name = func_name.replace('(', '').replace(')', '')
+            subs_dict[func] = sp.symbols(clean_name)
     
     # Apply substitutions
     return expr.subs(subs_dict)
