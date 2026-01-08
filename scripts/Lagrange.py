@@ -121,6 +121,10 @@ def potential_energy(mass, height, g=sp.symbols('g')):
 
 def _output(label, var_name, expr, use_lprint=True, is_sympy=True):
     """Helper to handle both lPrint and standard print output."""
+    # Substitute derivatives with readable symbols if expr is a sympy expression
+    if is_sympy and hasattr(expr, 'subs'):
+        expr = _substitute_derivatives(expr)
+    
     if use_lprint:
         lPrint(label, var_name, expr, sp=is_sympy)  # Jupyter markdown output with bold
     else:
@@ -129,3 +133,56 @@ def _output(label, var_name, expr, use_lprint=True, is_sympy=True):
             pprint(expr)
         else:
             print(f'{var_name} = {expr}')
+
+def _substitute_derivatives(expr):
+    """Substitute derivatives with readable velocity and acceleration symbols."""
+    if not hasattr(expr, 'atoms'):
+        return expr
+    
+    # Find all derivatives in the expression
+    derivatives = expr.atoms(sp.Derivative)
+    
+    # Create substitution dictionary
+    subs_dict = {}
+    
+    for deriv in derivatives:
+        # Get the function being differentiated
+        func = deriv.expr
+        
+        # Check if it's a function of t
+        if not hasattr(func, 'func'):
+            continue
+            
+        func_name = str(func.func).replace('(t)', '')
+        
+        # Count the order of differentiation with respect to t
+        deriv_order = sum(1 for arg in deriv.variables if arg == t)
+        
+        # Determine the appropriate symbol name
+        if deriv_order == 1:  # First derivative (velocity/angular velocity)
+            # Check if the variable name contains "theta" or similar rotational indicators
+            if 'theta' in func_name.lower() or 'phi' in func_name.lower() or 'psi' in func_name.lower():
+                # Extract number from function name if present
+                num = ''.join(filter(str.isdigit, func_name))
+                symbol_name = f'omega{num}' if num else 'omega'
+            else:
+                # Linear velocity
+                num = ''.join(filter(str.isdigit, func_name))
+                symbol_name = f'v{num}' if num else 'v'
+        elif deriv_order == 2:  # Second derivative (acceleration/angular acceleration)
+            # Check if the variable name contains "theta" or similar rotational indicators
+            if 'theta' in func_name.lower() or 'phi' in func_name.lower() or 'psi' in func_name.lower():
+                # Extract number from function name if present
+                num = ''.join(filter(str.isdigit, func_name))
+                symbol_name = f'alpha{num}' if num else 'alpha'
+            else:
+                # Linear acceleration
+                num = ''.join(filter(str.isdigit, func_name))
+                symbol_name = f'a{num}' if num else 'a'
+        else:
+            continue  # Skip higher order derivatives
+        
+        subs_dict[deriv] = sp.symbols(symbol_name)
+    
+    # Apply substitutions
+    return expr.subs(subs_dict)
